@@ -5,18 +5,21 @@
     <title>Portfolio Monitor - Advanced View</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #1a1a1a; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .container { max-width: 1150px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         h2 { color: #005a9e; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; margin-top: 0; }
         
         /* Form Styling */
         .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 25px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e1e4e8; }
         .controls input { padding: 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; }
+        .controls label { font-size: 11px; color: #666; font-weight: bold; margin-bottom: -10px; }
         
         /* Button Styling */
-        button { padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; font-size: 14px; }
-        .btn-add { background: #107c10; color: white; grid-column: span 1; }
+        button { padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; font-size: 13px; }
+        .btn-add { background: #107c10; color: white; }
+        .btn-edit { background: #ffaa00; color: #1a1a1a; margin-right: 5px; }
         .btn-refresh { background: #0078d4; color: white; }
-        .btn-delete { background: #d13438; color: white; padding: 6px 12px; }
+        .btn-delete { background: #d13438; color: white; }
+        .btn-cancel { background: #666; color: white; display: none; }
         button:hover { filter: brightness(90%); transform: translateY(-1px); }
 
         /* Table Styling */
@@ -27,7 +30,8 @@
         .loss { color: #d13438; font-weight: bold; }
         .neutral { color: #666; font-style: italic; }
         
-        #status { font-size: 13px; color: #0078d4; margin-bottom: 15px; font-weight: 500; }
+        #status { font-size: 13px; color: #0078d4; margin-bottom: 15px; font-weight: 500; min-height: 1.2em; }
+        .edit-mode { background: #fff9e6 !important; border: 1px solid #ffaa00 !important; }
     </style>
 </head>
 <body>
@@ -37,12 +41,21 @@
     
     <div id="status">System Ready</div>
 
-    <div class="controls">
-        <input type="text" id="tickerInput" placeholder="Ticker (NVDA)">
-        <input type="number" id="sharesInput" placeholder="Shares">
-        <input type="number" step="0.01" id="priceInput" placeholder="Price Bought (Optional)">
-        <input type="date" id="dateInput">
-        <button class="btn-add" onclick="saveStock()">Save Asset</button>
+    <div class="controls" id="inputForm">
+        <div>
+            <input type="text" id="tickerInput" placeholder="Ticker (NVDA)">
+        </div>
+        <div>
+            <input type="number" id="sharesInput" placeholder="Shares">
+        </div>
+        <div>
+            <input type="number" step="0.01" id="priceInput" placeholder="Price Bought">
+        </div>
+        <div>
+            <input type="date" id="dateInput">
+        </div>
+        <button class="btn-add" id="saveBtn" onclick="saveStock()">Save Asset</button>
+        <button class="btn-cancel" id="cancelBtn" onclick="resetForm()">Cancel</button>
         <button class="btn-refresh" onclick="fetchPortfolio()">Refresh</button>
     </div>
 
@@ -64,7 +77,9 @@
 
 <script>
     const API_URL = 'https://cjstocks-gpgmhnf0eba9c8c8.canadacentral-01.azurewebsites.net/api/get_portfolio';
+    let isEditMode = false;
 
+    // --- 1. FETCH PORTFOLIO ---
     async function fetchPortfolio() {
         const status = document.getElementById('status');
         const tableBody = document.querySelector('#portfolioTable tbody');
@@ -76,7 +91,6 @@
             
             tableBody.innerHTML = ""; 
             data.forEach(item => {
-                // Formatting Gain/Loss
                 let glDisplay = "N/A";
                 let glClass = "neutral";
                 
@@ -86,7 +100,8 @@
                     glClass = gl >= 0 ? 'gain' : 'loss';
                 }
 
-                const priceDisplay = item.price_bought ? `$${parseFloat(item.price_bought).toFixed(2)}` : "—";
+                const priceValue = item.price_bought ? parseFloat(item.price_bought).toFixed(2) : "";
+                const priceDisplay = priceValue ? `$${priceValue}` : "—";
                 const dateDisplay = item.date_added ? item.date_added : "—";
 
                 const row = `<tr>
@@ -96,6 +111,7 @@
                     <td>${dateDisplay}</td>
                     <td class="${glClass}">${glDisplay}</td>
                     <td>
+                        <button class="btn-edit" onclick="editStock('${item.ticker}', ${item.shares}, '${priceValue}', '${item.date_added}')">Edit</button>
                         <button class="btn-delete" onclick="deleteStock('${item.ticker}')">Delete</button>
                     </td>
                 </tr>`;
@@ -108,6 +124,26 @@
         }
     }
 
+    // --- 2. EDIT STOCK (Pre-fill form) ---
+    function editStock(ticker, shares, price, date) {
+        isEditMode = true;
+        document.getElementById('tickerInput').value = ticker;
+        document.getElementById('tickerInput').disabled = true; // Don't allow changing ticker during edit
+        document.getElementById('sharesInput').value = shares;
+        document.getElementById('priceInput').value = price;
+        document.getElementById('dateInput').value = date;
+
+        // UI Changes
+        document.getElementById('saveBtn').innerText = "Update Asset";
+        document.getElementById('saveBtn').style.background = "#ffaa00";
+        document.getElementById('saveBtn').style.color = "#1a1a1a";
+        document.getElementById('cancelBtn').style.display = "inline-block";
+        document.getElementById('inputForm').classList.add('edit-mode');
+        document.getElementById('status').innerText = `✏️ Editing ${ticker}...`;
+        window.scrollTo(0, 0);
+    }
+
+    // --- 3. SAVE / UPDATE STOCK ---
     async function saveStock() {
         const ticker = document.getElementById('tickerInput').value.toUpperCase();
         const shares = document.getElementById('sharesInput').value;
@@ -116,26 +152,23 @@
 
         if (!ticker || !shares) return alert("Ticker and Shares are required.");
 
-        document.getElementById('status').innerText = `💾 Processing ${ticker}...`;
+        const method = isEditMode ? 'PUT' : 'POST';
+        document.getElementById('status').innerText = `💾 ${isEditMode ? 'Updating' : 'Saving'} ${ticker}...`;
 
         try {
             const response = await fetch(API_URL, {
-                method: 'POST',
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     ticker, 
                     shares: parseFloat(shares), 
-                    price_bought: price_bought ? parseFloat(price_bought) : null,
-                    date_added: date_added || new Date().toISOString().split('T')[0]
+                    purchase_price: price_bought ? parseFloat(price_bought) : null,
+                    purchase_date: date_added || new Date().toISOString().split('T')[0]
                 })
             });
 
             if (response.ok) {
-                // Clear form
-                document.getElementById('tickerInput').value = "";
-                document.getElementById('sharesInput').value = "";
-                document.getElementById('priceInput').value = "";
-                document.getElementById('dateInput').value = "";
+                resetForm();
                 fetchPortfolio(); 
             }
         } catch (err) {
@@ -143,15 +176,49 @@
         }
     }
 
+    // --- 4. DELETE STOCK (With Safety) ---
     async function deleteStock(ticker) {
-        if (!confirm(`Confirm removal of ${ticker}?`)) return;
-        document.getElementById('status').innerText = `🗑️ Removing ${ticker}...`;
+        // Double-check safety mechanism
+        const status = document.getElementById('status');
+        status.innerText = `⚠️ Awaiting confirmation to delete ${ticker}...`;
+        status.style.color = "#d13438";
+
+        const confirmed = confirm(`SAFETY ALERT: Are you sure you want to permanently delete ${ticker} from your portfolio? This cannot be undone.`);
+        
+        if (!confirmed) {
+            status.innerText = "Deletion cancelled.";
+            status.style.color = "#0078d4";
+            return;
+        }
+
+        status.innerText = `🗑️ Removing ${ticker} from Azure SQL...`;
         try {
-            const response = await fetch(`${API_URL}?ticker=${ticker}`, { method: 'DELETE' });
+            const response = await fetch(API_URL, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticker })
+            });
             if (response.ok) fetchPortfolio();
         } catch (err) {
             alert("Error deleting asset.");
         }
+    }
+
+    // --- 5. UTILITY: RESET FORM ---
+    function resetForm() {
+        isEditMode = false;
+        document.getElementById('tickerInput').value = "";
+        document.getElementById('tickerInput').disabled = false;
+        document.getElementById('sharesInput').value = "";
+        document.getElementById('priceInput').value = "";
+        document.getElementById('dateInput').value = "";
+        
+        document.getElementById('saveBtn').innerText = "Save Asset";
+        document.getElementById('saveBtn').style.background = "#107c10";
+        document.getElementById('saveBtn').style.color = "white";
+        document.getElementById('cancelBtn').style.display = "none";
+        document.getElementById('inputForm').classList.remove('edit-mode');
+        document.getElementById('status').style.color = "#0078d4";
     }
 
     fetchPortfolio();
