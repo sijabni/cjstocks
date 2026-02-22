@@ -5,7 +5,7 @@
     <title>Portfolio Monitor - Advanced View</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #1a1a1a; }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .container { max-width: 1250px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         h2 { color: #005a9e; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; margin-top: 0; }
         
         /* Summary Bar */
@@ -32,6 +32,7 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 14px; border-bottom: 1px solid #eee; text-align: left; }
         th { background-color: #fafbfc; color: #444; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+        .current-val { font-weight: bold; color: #005a9e; }
         .gain { color: #107c10; font-weight: bold; }
         .loss { color: #d13438; font-weight: bold; }
         
@@ -54,8 +55,8 @@
             <p id="passiveInc">$0.00</p>
         </div>
         <div class="stat-card">
-            <h4>Stock Count</h4>
-            <p id="stockCount">0</p>
+            <h4>Daily Gain/Loss</h4>
+            <p id="dailyGL">$0.00</p>
         </div>
     </div>
 
@@ -69,11 +70,9 @@
         
         <button class="btn-add" id="saveBtn" onclick="saveStock()">Save Asset</button>
         <button class="btn-cancel" id="cancelBtn" onclick="resetForm()">Cancel</button>
-        
         <button class="btn-csv-export" onclick="exportCSV()">Export CSV</button>
         <button class="btn-csv-import" onclick="document.getElementById('csvFile').click()">Import CSV</button>
         <input type="file" id="csvFile" style="display:none" accept=".csv" onchange="importCSV(this)">
-        
         <button class="btn-refresh" onclick="fetchPortfolio()">Refresh</button>
     </div>
 
@@ -83,8 +82,9 @@
                 <th>Ticker</th>
                 <th>Shares</th>
                 <th>Price Bought</th>
-                <th>Date Added</th>
+                <th>Current Value</th>
                 <th>Gain/Loss</th>
+                <th>Date Added</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -97,7 +97,6 @@
     let isEditMode = false;
     let portfolioData = [];
 
-    // --- 1. FETCH & SUMMARY ---
     async function fetchPortfolio() {
         const status = document.getElementById('status');
         const tableBody = document.querySelector('#portfolioTable tbody');
@@ -108,25 +107,30 @@
             portfolioData = await response.json();
             
             tableBody.innerHTML = ""; 
-            let totalValue = 0;
+            let totalPortfolioValue = 0;
+            let totalGainLoss = 0;
 
             portfolioData.forEach(item => {
                 const gl = parseFloat(item.gain_loss) || 0;
-                const priceValue = item.price_bought ? parseFloat(item.price_bought).toFixed(2) : "";
+                const shares = parseFloat(item.shares) || 0;
+                const priceBought = parseFloat(item.price_bought) || 0;
                 
-                // Track total value for the summary cards
-                // Note: In a real app, you'd add (current_price * shares). 
-                // For now, we'll estimate total based on purchase + gain/loss
-                totalValue += (parseFloat(item.price_bought || 0) * parseFloat(item.shares || 0)) + gl;
+                // Calculate Current Market Value for the row
+                // Total value = (Purchase Price * Shares) + Gain/Loss
+                const currentMarketValue = (priceBought * shares) + gl;
+                
+                totalPortfolioValue += currentMarketValue;
+                totalGainLoss += gl;
 
                 const row = `<tr>
                     <td><strong>${item.ticker}</strong></td>
-                    <td>${item.shares}</td>
-                    <td>${item.price_bought ? '$' + priceValue : '—'}</td>
-                    <td>${item.date_added || '—'}</td>
+                    <td>${shares}</td>
+                    <td>${item.price_bought ? '$' + priceBought.toFixed(2) : '—'}</td>
+                    <td class="current-val">$${currentMarketValue.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     <td class="${gl >= 0 ? 'gain' : 'loss'}">$${gl.toLocaleString()}</td>
+                    <td>${item.date_added || '—'}</td>
                     <td>
-                        <button class="btn-edit" onclick="editStock('${item.ticker}', ${item.shares}, '${priceValue}', '${item.date_added}')">Edit</button>
+                        <button class="btn-edit" onclick="editStock('${item.ticker}', ${item.shares}, '${priceBought.toFixed(2)}', '${item.date_added}')">Edit</button>
                         <button class="btn-delete" onclick="deleteStock('${item.ticker}')">Delete</button>
                     </td>
                 </tr>`;
@@ -134,9 +138,10 @@
             });
 
             // Update Summary Cards
-            document.getElementById('totalVal').innerText = `$${totalValue.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-            document.getElementById('passiveInc').innerText = `$${(totalValue * 0.04).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-            document.getElementById('stockCount').innerText = portfolioData.length;
+            document.getElementById('totalVal').innerText = `$${totalPortfolioValue.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('passiveInc').innerText = `$${(totalPortfolioValue * 0.04).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('dailyGL').innerText = `$${totalGainLoss.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('dailyGL').className = totalGainLoss >= 0 ? 'gain' : 'loss';
             
             status.innerText = "✅ Live Data Updated.";
         } catch (err) {
@@ -144,7 +149,7 @@
         }
     }
 
-    // --- 2. CSV EXPORT ---
+    // CSV, CRUD, and UI functions remain the same as previous version
     function exportCSV() {
         let csvRows = ["Ticker,Shares,PriceBought,DateAdded"];
         portfolioData.forEach(item => {
@@ -158,13 +163,11 @@
         a.click();
     }
 
-    // --- 3. CSV IMPORT ---
     function importCSV(input) {
         const file = input.files[0];
         const reader = new FileReader();
         reader.onload = async function(e) {
             const rows = e.target.result.split("\n").slice(1);
-            document.getElementById('status').innerText = "⏳ Processing bulk upload...";
             for (let row of rows) {
                 const [ticker, shares, price, date] = row.split(",");
                 if(ticker) {
@@ -180,7 +183,6 @@
         reader.readAsText(file);
     }
 
-    // --- 4. CRUD OPERATIONS ---
     async function saveStock() {
         const ticker = document.getElementById('tickerInput').value.toUpperCase();
         const shares = document.getElementById('sharesInput').value;
