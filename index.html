@@ -9,7 +9,6 @@
         .container { max-width: 1300px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         h2 { color: #005a9e; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; margin-top: 0; }
         
-        /* Layout for Summary and Chart */
         .dashboard-top { display: grid; grid-template-columns: 1fr 350px; gap: 20px; margin-bottom: 25px; }
         .summary-bar { display: grid; grid-template-columns: 1fr; gap: 15px; background: #005a9e; color: white; padding: 20px; border-radius: 8px; }
         .chart-container { background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8; height: 300px; display: flex; flex-direction: column; align-items: center; }
@@ -95,20 +94,6 @@
     let rawPortfolioData = [];
     let myChart = null;
 
-    // --- ALLOCATION ENGINE ---
-    function getCategory(ticker) {
-        const growth = ['NVDA', 'PLTR', 'VRT', 'AVGO', 'META', 'AMZN', 'TSLA', 'AMD'];
-        const value = ['ABT', 'JPM', 'UNH', 'PM', 'JNJ', 'SCHD', 'VIG', 'VOO', 'BRKB', 'BRK.B'];
-        const hedges = ['GLDM', 'IAU', 'SLV', 'WPM', 'SBSW'];
-        const cash = ['FDRXX', 'SPAXX', 'VMFXX'];
-
-        if (growth.includes(ticker)) return 'Growth';
-        if (value.includes(ticker)) return 'Value/Div';
-        if (hedges.includes(ticker)) return 'Hedges';
-        if (cash.includes(ticker)) return 'Cash';
-        return 'Other';
-    }
-
     async function fetchPortfolio() {
         const status = document.getElementById('status');
         const tableBody = document.getElementById('tableBody');
@@ -119,66 +104,77 @@
             rawPortfolioData = await response.json();
             
             const groups = new Map();
-            // -- const allocData = { 'Growth': 0, 'Value/Div': 0, 'Hedges': 0, 'Cash': 0, 'Other': 0 };
-            const allocData = {};
-            let totalVal = 0; let totalGL = 0;
+            const allocData = {}; // Dynamically populated from backend categories
+            let totalVal = 0; 
+            let totalGL = 0;
 
             rawPortfolioData.forEach(item => {
-                
                 const shares = parseFloat(item.shares) || 0;
                 const price = parseFloat(item.price_bought) || 0;
                 const gl = parseFloat(item.gain_loss) || 0;
-                //--const marketVal = (shares * price) + gl;
-                const marketVal = (parseFloat(item.shares) * parseFloat(item.price_bought)) + parseFloat(item.gain_loss);
+                
+                // Market Value Calculation
+                const marketVal = (shares * price) + gl;
+                
+                // Use the 'category' sent from the Python backend (get_exhaustive_data)
                 const cat = item.category || 'Other';
                 allocData[cat] = (allocData[cat] || 0) + marketVal;
 
-                totalVal += marketVal; totalGL += gl;
-                allocData[getCategory(item.ticker)] += marketVal;
+                totalVal += marketVal; 
+                totalGL += gl;
 
                 if (!groups.has(item.ticker)) {
                     groups.set(item.ticker, { ticker: item.ticker, totalShares: 0, totalCost: 0, totalGL: 0, lots: [] });
                 }
                 const g = groups.get(item.ticker);
-                g.totalShares += shares; g.totalCost += (shares * price); g.totalGL += gl;
+                g.totalShares += shares; 
+                g.totalCost += (shares * price); 
+                g.totalGL += gl;
                 g.lots.push({ ...item, marketVal, gl });
             });
 
             updateChart(allocData);
             renderTable(groups);
 
-            document.getElementById('totalVal').innerText = `$${totalVal.toLocaleString()}`;
-            document.getElementById('passiveInc').innerText = `$${(totalVal * 0.04).toLocaleString()}`;
+            document.getElementById('totalVal').innerText = `$${totalVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('passiveInc').innerText = `$${(totalVal * 0.04).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('lotCount').innerText = rawPortfolioData.length;
             status.innerText = "✅ Updated.";
-        } catch (e) { status.innerText = "❌ Error Fetching Data."; }
+        } catch (e) { 
+            status.innerText = "❌ Error Fetching Data."; 
+            console.error(e);
+        }
     }
 
     function updateChart(data) {
-    const ctx = document.getElementById('allocationChart').getContext('2d');
-    if (myChart) myChart.destroy();
-    
-    // Generate colors dynamically or use a palette
-    const colors = ['#0078d4', '#107c10', '#ffaa00', '#d13438', '#7fba00', '#002050'];
+        const ctx = document.getElementById('allocationChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        
+        // Dynamic palette for various sectors
+        const colors = ['#0078d4', '#107c10', '#ffaa00', '#d13438', '#7fba00', '#002050', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
 
-    myChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(data),
-            datasets: [{
-                data: Object.values(data),
-                backgroundColor: colors,
-                borderWidth: 1
-            }]
-        },
-        options: { 
-            cutout: '70%', 
-            plugins: { 
-                legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } 
-            } 
-        }
-    });
-}
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(data),
+                datasets: [{
+                    data: Object.values(data),
+                    backgroundColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: { 
+                cutout: '70%', 
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { 
+                        position: 'bottom', 
+                        labels: { boxWidth: 10, font: { size: 10 } } 
+                    } 
+                } 
+            }
+        });
+    }
 
     function renderTable(groups) {
         const tableBody = document.getElementById('tableBody');
@@ -190,100 +186,12 @@
             const hRow = document.createElement('tr');
             hRow.className = 'group-header';
             hRow.onclick = () => toggle(ticker, hRow);
-            hRow.innerHTML = `<td><span class="expand-icon">▶</span> ${ticker}</td><td>${g.totalShares}</td><td>$${avg.toFixed(2)}</td><td>$${mVal.toLocaleString()}</td><td class="${g.totalGL>=0?'gain':'loss'}">$${g.totalGL.toLocaleString()}</td><td>Summary</td>`;
+            hRow.innerHTML = `<td><span class="expand-icon">▶</span> ${ticker}</td><td>${g.totalShares}</td><td>$${avg.toFixed(2)}</td><td>$${mVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td class="${g.totalGL>=0?'gain':'loss'}">$${g.totalGL.toLocaleString()}</td><td>Summary</td>`;
             tableBody.appendChild(hRow);
 
-            g.lots.forEach(lot => {
+            g.lots.sort((a, b) => new Date(a.date_added) - new Date(b.date_added)).forEach(lot => {
                 const lRow = document.createElement('tr');
                 lRow.className = `lot-row lot-${ticker}`;
-                lRow.innerHTML = `<td>📅 ${lot.date_added}</td><td>${lot.shares}</td><td>$${parseFloat(lot.price_bought).toFixed(2)}</td><td>$${lot.marketVal.toLocaleString()}</td><td class="${lot.gl>=0?'gain':'loss'}">$${lot.gl.toLocaleString()}</td>
+                lRow.innerHTML = `<td>📅 ${lot.date_added}</td><td>${lot.shares}</td><td>$${parseFloat(lot.price_bought).toFixed(2)}</td><td>$${lot.marketVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td class="${lot.gl>=0?'gain':'loss'}">$${lot.gl.toLocaleString()}</td>
                     <td>
-                        <button class="btn-edit" onclick="event.stopPropagation(); prepareEdit('${lot.ticker}', ${lot.shares}, ${lot.price_bought}, '${lot.date_added}')">Edit</button>
-                        <button class="btn-delete" onclick="event.stopPropagation(); deleteAsset('${lot.ticker}', '${lot.date_added}')">Delete</button>
-                    </td>`;
-                tableBody.appendChild(lRow);
-            });
-        });
-    }
-
-    function toggle(t, el) {
-        el.classList.toggle('expanded');
-        document.querySelectorAll(`.lot-${t}`).forEach(l => l.classList.toggle('show'));
-        el.querySelector('.expand-icon').innerText = el.classList.contains('expanded') ? '▼' : '▶';
-    }
-
-    // CRUD and Bulk functions (Export/Import) remain as previously provided
-    async function saveStock() {
-        const ticker = document.getElementById('tickerInput').value.toUpperCase();
-        const shares = document.getElementById('sharesInput').value;
-        const price = document.getElementById('priceInput').value;
-        const date = document.getElementById('dateInput').value;
-        if(!ticker || !shares) return;
-        const method = isEditMode ? 'PUT' : 'POST';
-        await fetch(API_URL, {
-            method: method,
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ticker, shares: parseFloat(shares), purchase_price: parseFloat(price), purchase_date: date })
-        });
-        resetForm(); fetchPortfolio();
-    }
-
-    function prepareEdit(t, s, p, d) {
-        isEditMode = true;
-        document.getElementById('tickerInput').value = t;
-        document.getElementById('tickerInput').disabled = true;
-        document.getElementById('sharesInput').value = s;
-        document.getElementById('priceInput').value = p;
-        document.getElementById('dateInput').value = d;
-        document.getElementById('saveBtn').innerText = "Update";
-        document.getElementById('cancelBtn').style.display = "inline-block";
-        document.getElementById('inputForm').classList.add('edit-mode');
-        window.scrollTo(0,0);
-    }
-
-    async function deleteAsset(ticker, date) {
-        if(!confirm(`Delete ${ticker} from ${date}?`)) return;
-        await fetch(API_URL, {
-            method: 'DELETE',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ticker, purchase_date: date })
-        });
-        fetchPortfolio();
-    }
-
-    function exportCSV() {
-        let rows = ["Ticker,Shares,Price,Date"];
-        rawPortfolioData.forEach(i => rows.push(`${i.ticker},${i.shares},${i.price_bought},${i.date_added}`));
-        const b = new Blob([rows.join("\n")], {type: 'text/csv'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = "Portfolio.csv"; a.click();
-    }
-
-    async function importCSV(input) {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const lines = e.target.result.split("\n").slice(1);
-            for(let l of lines) {
-                const [t, s, p, d] = l.split(",");
-                if(t) await fetch(API_URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ticker: t.trim(), shares: parseFloat(s), purchase_price: parseFloat(p), purchase_date: d.trim() })});
-            }
-            fetchPortfolio();
-        };
-        reader.readAsText(input.files[0]);
-    }
-
-    function resetForm() {
-        isEditMode = false;
-        document.getElementById('tickerInput').value = "";
-        document.getElementById('tickerInput').disabled = false;
-        document.getElementById('sharesInput').value = "";
-        document.getElementById('priceInput').value = "";
-        document.getElementById('dateInput').value = "";
-        document.getElementById('saveBtn').innerText = "Save Asset";
-        document.getElementById('cancelBtn').style.display = "none";
-        document.getElementById('inputForm').classList.remove('edit-mode');
-    }
-
-    fetchPortfolio();
-</script>
-</body>
-</html>
+                        <button class="btn-edit" onclick="event.stopPropagation(); prepareEdit('${lot.ticker}', ${lot.shares}, ${lot.price_bought}, '${lot.date_added}')">
