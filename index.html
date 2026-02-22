@@ -119,7 +119,8 @@
             rawPortfolioData = await response.json();
             
             const groups = new Map();
-            const allocData = { 'Growth': 0, 'Value/Div': 0, 'Hedges': 0, 'Cash': 0, 'Other': 0 };
+            // -- const allocData = { 'Growth': 0, 'Value/Div': 0, 'Hedges': 0, 'Cash': 0, 'Other': 0 };
+            const allocData = {};
             let totalVal = 0; let totalGL = 0;
 
             rawPortfolioData.forEach(item => {
@@ -127,7 +128,8 @@
                 const shares = parseFloat(item.shares) || 0;
                 const price = parseFloat(item.price_bought) || 0;
                 const gl = parseFloat(item.gain_loss) || 0;
-                const marketVal = (shares * price) + gl;
+                //--const marketVal = (shares * price) + gl;
+                const marketVal = (parseFloat(item.shares) * parseFloat(item.price_bought)) + parseFloat(item.gain_loss);
                 const cat = item.category || 'Other';
                 allocData[cat] = (allocData[cat] || 0) + marketVal;
 
