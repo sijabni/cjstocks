@@ -2,45 +2,48 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Safe-Aggressive Portfolio Monitor</title>
+    <title>Portfolio Monitor - Advanced View</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f4f9; padding: 20px; color: #333; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h2 { color: #0078d4; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #1a1a1a; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h2 { color: #005a9e; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; margin-top: 0; }
         
         /* Form Styling */
-        .controls { display: flex; gap: 10px; margin-bottom: 20px; background: #eef5fb; padding: 15px; border-radius: 5px; }
-        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex: 1; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 25px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e1e4e8; }
+        .controls input { padding: 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; }
         
         /* Button Styling */
-        button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn-add { background: #28a745; color: white; }
+        button { padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; font-size: 14px; }
+        .btn-add { background: #107c10; color: white; grid-column: span 1; }
         .btn-refresh { background: #0078d4; color: white; }
-        .btn-delete { background: #dc3545; color: white; padding: 4px 8px; font-size: 12px; }
-        button:hover { opacity: 0.8; }
+        .btn-delete { background: #d13438; color: white; padding: 6px 12px; }
+        button:hover { filter: brightness(90%); transform: translateY(-1px); }
 
         /* Table Styling */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
-        th { background-color: #f8f9fa; color: #555; text-transform: uppercase; font-size: 13px; }
-        .gain { color: #28a745; font-weight: bold; }
-        .loss { color: #dc3545; font-weight: bold; }
+        th, td { padding: 14px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background-color: #fafbfc; color: #444; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+        .gain { color: #107c10; font-weight: bold; }
+        .loss { color: #d13438; font-weight: bold; }
+        .neutral { color: #666; font-style: italic; }
         
-        #status { font-style: italic; color: #666; margin-bottom: 10px; }
+        #status { font-size: 13px; color: #0078d4; margin-bottom: 15px; font-weight: 500; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📈 Portfolio Performance</h2>
+    <h2>📊 Portfolio Performance Monitor</h2>
     
-    <div id="status">Ready.</div>
+    <div id="status">System Ready</div>
 
     <div class="controls">
-        <input type="text" id="tickerInput" placeholder="Ticker (e.g. NVDA)">
+        <input type="text" id="tickerInput" placeholder="Ticker (NVDA)">
         <input type="number" id="sharesInput" placeholder="Shares">
-        <button class="btn-add" onclick="saveStock()">Save Stock</button>
-        <button class="btn-refresh" onclick="fetchPortfolio()">Refresh List</button>
+        <input type="number" step="0.01" id="priceInput" placeholder="Price Bought (Optional)">
+        <input type="date" id="dateInput">
+        <button class="btn-add" onclick="saveStock()">Save Asset</button>
+        <button class="btn-refresh" onclick="fetchPortfolio()">Refresh</button>
     </div>
 
     <table id="portfolioTable">
@@ -48,6 +51,8 @@
             <tr>
                 <th>Ticker</th>
                 <th>Shares</th>
+                <th>Price Bought</th>
+                <th>Date Added</th>
                 <th>Gain/Loss</th>
                 <th>Actions</th>
             </tr>
@@ -60,11 +65,10 @@
 <script>
     const API_URL = 'https://cjstocks-gpgmhnf0eba9c8c8.canadacentral-01.azurewebsites.net/api/get_portfolio';
 
-    // 1. FETCH & DISPLAY
     async function fetchPortfolio() {
         const status = document.getElementById('status');
         const tableBody = document.querySelector('#portfolioTable tbody');
-        status.innerText = "Synchronizing with Azure...";
+        status.innerText = "🛰️ Fetching latest market data...";
         
         try {
             const response = await fetch(API_URL);
@@ -72,68 +76,84 @@
             
             tableBody.innerHTML = ""; 
             data.forEach(item => {
-                const isGain = parseFloat(item.gain_loss) >= 0;
+                // Formatting Gain/Loss
+                let glDisplay = "N/A";
+                let glClass = "neutral";
+                
+                if (item.gain_loss !== null && item.gain_loss !== undefined) {
+                    const gl = parseFloat(item.gain_loss);
+                    glDisplay = `$${gl.toLocaleString()}`;
+                    glClass = gl >= 0 ? 'gain' : 'loss';
+                }
+
+                const priceDisplay = item.price_bought ? `$${parseFloat(item.price_bought).toFixed(2)}` : "—";
+                const dateDisplay = item.date_added ? item.date_added : "—";
+
                 const row = `<tr>
                     <td><strong>${item.ticker}</strong></td>
                     <td>${item.shares}</td>
-                    <td class="${isGain ? 'gain' : 'loss'}">$${item.gain_loss}</td>
+                    <td>${priceDisplay}</td>
+                    <td>${dateDisplay}</td>
+                    <td class="${glClass}">${glDisplay}</td>
                     <td>
                         <button class="btn-delete" onclick="deleteStock('${item.ticker}')">Delete</button>
                     </td>
                 </tr>`;
                 tableBody.innerHTML += row;
             });
-            status.innerText = "Update complete.";
+            status.innerText = "✅ Synchronized with Azure Backend.";
         } catch (err) {
-            status.innerText = "Connection error.";
+            status.innerText = "❌ Error: Could not connect to API.";
             console.error(err);
         }
     }
 
-    // 2. ADD OR UPDATE (POST/PUT)
     async function saveStock() {
         const ticker = document.getElementById('tickerInput').value.toUpperCase();
         const shares = document.getElementById('sharesInput').value;
+        const price_bought = document.getElementById('priceInput').value;
+        const date_added = document.getElementById('dateInput').value;
 
-        if (!ticker || !shares) return alert("Please enter both ticker and shares.");
+        if (!ticker || !shares) return alert("Ticker and Shares are required.");
 
-        document.getElementById('status').innerText = `Saving ${ticker}...`;
+        document.getElementById('status').innerText = `💾 Processing ${ticker}...`;
 
         try {
             const response = await fetch(API_URL, {
-                method: 'POST', // Or PUT depending on your API design
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticker, shares })
+                body: JSON.stringify({ 
+                    ticker, 
+                    shares: parseFloat(shares), 
+                    price_bought: price_bought ? parseFloat(price_bought) : null,
+                    date_added: date_added || new Date().toISOString().split('T')[0]
+                })
             });
 
             if (response.ok) {
+                // Clear form
                 document.getElementById('tickerInput').value = "";
                 document.getElementById('sharesInput').value = "";
-                fetchPortfolio(); // Refresh display
+                document.getElementById('priceInput').value = "";
+                document.getElementById('dateInput').value = "";
+                fetchPortfolio(); 
             }
         } catch (err) {
-            alert("Error saving data.");
+            alert("Failed to save asset.");
         }
     }
 
-    // 3. DELETE
     async function deleteStock(ticker) {
-        if (!confirm(`Remove ${ticker} from portfolio?`)) return;
-
-        document.getElementById('status').innerText = `Deleting ${ticker}...`;
-
+        if (!confirm(`Confirm removal of ${ticker}?`)) return;
+        document.getElementById('status').innerText = `🗑️ Removing ${ticker}...`;
         try {
-            const response = await fetch(`${API_URL}?ticker=${ticker}`, {
-                method: 'DELETE'
-            });
-
+            const response = await fetch(`${API_URL}?ticker=${ticker}`, { method: 'DELETE' });
             if (response.ok) fetchPortfolio();
         } catch (err) {
-            alert("Error deleting stock.");
+            alert("Error deleting asset.");
         }
     }
 
-    // Initial Load
     fetchPortfolio();
 </script>
 
