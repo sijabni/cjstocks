@@ -117,7 +117,7 @@
                 allocData[cat] = (allocData[cat] || 0) + marketVal;
 
                 if (!groups.has(item.ticker)) {
-                    groups.set(item.ticker, { ticker: item.ticker, totalShares: 0, totalCost: 0, totalGL: 0, lots: [] });
+                    groups.set(item.ticker, { ticker: item.ticker, totalShares: 0, totalCost: 0, totalGL: 0, lots: [], trend_data: item.trend_data || [] });
                 }
                 const g = groups.get(item.ticker);
                 g.totalShares += shares; 
