@@ -195,3 +195,91 @@
                 lRow.innerHTML = `<td>📅 ${lot.date_added}</td><td>${lot.shares}</td><td>$${parseFloat(lot.price_bought).toFixed(2)}</td><td>$${lot.marketVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td class="${lot.gl>=0?'gain':'loss'}">$${lot.gl.toLocaleString()}</td>
                     <td>
                         <button class="btn-edit" onclick="event.stopPropagation(); prepareEdit('${lot.ticker}', ${lot.shares}, ${lot.price_bought}, '${lot.date_added}')">
+                                                   <button class="btn-delete" onclick="event.stopPropagation(); deleteAsset('${lot.ticker}', '${lot.date_added}')">Delete</button>
+                    </td>`;
+                tableBody.appendChild(lRow);
+            });
+        });
+    }
+
+    function toggle(t, el) {
+        el.classList.toggle('expanded');
+        document.querySelectorAll(`.lot-${t}`).forEach(l => l.classList.toggle('show'));
+        el.querySelector('.expand-icon').innerText = el.classList.contains('expanded') ? '▼' : '▶';
+    }
+
+    // CRUD and Bulk functions (Export/Import) remain as previously provided
+    async function saveStock() {
+        const ticker = document.getElementById('tickerInput').value.toUpperCase();
+        const shares = document.getElementById('sharesInput').value;
+        const price = document.getElementById('priceInput').value;
+        const date = document.getElementById('dateInput').value;
+        if(!ticker || !shares) return;
+        const method = isEditMode ? 'PUT' : 'POST';
+        await fetch(API_URL, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ticker, shares: parseFloat(shares), purchase_price: parseFloat(price), purchase_date: date })
+        });
+        resetForm(); fetchPortfolio();
+    }
+
+    function prepareEdit(t, s, p, d) {
+        isEditMode = true;
+        document.getElementById('tickerInput').value = t;
+        document.getElementById('tickerInput').disabled = true;
+        document.getElementById('sharesInput').value = s;
+        document.getElementById('priceInput').value = p;
+        document.getElementById('dateInput').value = d;
+        document.getElementById('saveBtn').innerText = "Update";
+        document.getElementById('cancelBtn').style.display = "inline-block";
+        document.getElementById('inputForm').classList.add('edit-mode');
+        window.scrollTo(0,0);
+    }
+
+    async function deleteAsset(ticker, date) {
+        if(!confirm(`Delete ${ticker} from ${date}?`)) return;
+        await fetch(API_URL, {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ticker, purchase_date: date })
+        });
+        fetchPortfolio();
+    }
+
+    function exportCSV() {
+        let rows = ["Ticker,Shares,Price,Date"];
+        rawPortfolioData.forEach(i => rows.push(`${i.ticker},${i.shares},${i.price_bought},${i.date_added}`));
+        const b = new Blob([rows.join("\n")], {type: 'text/csv'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = "Portfolio.csv"; a.click();
+    }
+
+    async function importCSV(input) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const lines = e.target.result.split("\n").slice(1);
+            for(let l of lines) {
+                const [t, s, p, d] = l.split(",");
+                if(t) await fetch(API_URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ticker: t.trim(), shares: parseFloat(s), purchase_price: parseFloat(p), purchase_date: d.trim() })});
+            }
+            fetchPortfolio();
+        };
+        reader.readAsText(input.files[0]);
+    }
+
+    function resetForm() {
+        isEditMode = false;
+        document.getElementById('tickerInput').value = "";
+        document.getElementById('tickerInput').disabled = false;
+        document.getElementById('sharesInput').value = "";
+        document.getElementById('priceInput').value = "";
+        document.getElementById('dateInput').value = "";
+        document.getElementById('saveBtn').innerText = "Save Asset";
+        document.getElementById('cancelBtn').style.display = "none";
+        document.getElementById('inputForm').classList.remove('edit-mode');
+    }
+
+    fetchPortfolio();
+</script>
+</body>
+</html>
