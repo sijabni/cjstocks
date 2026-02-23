@@ -10,11 +10,15 @@
         h2 { color: #005a9e; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; margin-top: 0; }
         
         .dashboard-top { display: grid; grid-template-columns: 1fr 350px; gap: 20px; margin-bottom: 25px; }
-        .summary-bar { display: grid; grid-template-columns: 1fr; gap: 15px; background: #005a9e; color: white; padding: 20px; border-radius: 8px; }
-        .chart-container { background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8; height: 300px; display: flex; flex-direction: column; align-items: center; }
         
-        .stat-card h4 { margin: 0; font-size: 11px; text-transform: uppercase; opacity: 0.8; }
-        .stat-card p { margin: 5px 0 0; font-size: 22px; font-weight: bold; }
+        /* Updated Summary Bar for Retirement Stats */
+        .summary-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; background: #005a9e; color: white; padding: 20px; border-radius: 8px; }
+        .chart-container { background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8; height: 320px; display: flex; flex-direction: column; align-items: center; }
+        
+        .stat-card { border-left: 3px solid rgba(255,255,255,0.2); padding-left: 12px; }
+        .stat-card h4 { margin: 0; font-size: 10px; text-transform: uppercase; opacity: 0.8; }
+        .stat-card p { margin: 5px 0 0; font-size: 20px; font-weight: bold; }
+        .income-text { color: #7fba00; } /* Professional green for "Safe Withdrawal" */
 
         .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 25px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e1e4e8; align-items: end; }
         .controls input { padding: 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; }
@@ -38,19 +42,19 @@
         .gain { color: #107c10; font-weight: bold; }
         .loss { color: #d13438; font-weight: bold; }
         #status { font-size: 13px; color: #0078d4; margin-bottom: 15px; font-weight: 500; }
-        .edit-mode { background: #fff9e6 !important; border: 1px solid #ffaa00 !important; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📊 Portfolio Monitor Master + Allocation</h2>
+    <h2>📊 Portfolio & Retirement Dashboard</h2>
     
     <div class="dashboard-top">
         <div class="summary-bar">
             <div class="stat-card"><h4>Total Value</h4><p id="totalVal">$0.00</p></div>
-            <div class="stat-card"><h4>Passive Income (4%)</h4><p id="passiveInc">$0.00</p></div>
-            <div class="stat-card"><h4>Lots Tracked</h4><p id="lotCount">0</p></div>
+            <div class="stat-card"><h4>Monthly Income (4%)</h4><p id="monthlyInc" class="income-text">$0.00</p></div>
+            <div class="stat-card"><h4>Annual Safe Pay</h4><p id="passiveInc">$0.00</p></div>
+            <div class="stat-card"><h4>Goal Coverage</h4><p id="goalPct">0%</p></div>
         </div>
         <div class="chart-container">
             <h4 style="margin: 0 0 10px 0; font-size: 12px; color: #666;">ASSET ALLOCATION</h4>
@@ -97,31 +101,25 @@
     async function fetchPortfolio() {
         const status = document.getElementById('status');
         const tableBody = document.getElementById('tableBody');
-        status.innerText = "Synchronizing Data...";
+        status.innerText = "🛰️ Synchronizing Market Data...";
         
         try {
             const response = await fetch(API_URL);
             rawPortfolioData = await response.json();
             
             const groups = new Map();
-            const allocData = {}; // Dynamically populated from backend categories
+            const allocData = {}; 
             let totalVal = 0; 
-            let totalGL = 0;
 
             rawPortfolioData.forEach(item => {
                 const shares = parseFloat(item.shares) || 0;
                 const price = parseFloat(item.price_bought) || 0;
                 const gl = parseFloat(item.gain_loss) || 0;
-                
-                // Market Value Calculation
                 const marketVal = (shares * price) + gl;
-                
-                // Use the 'category' sent from the Python backend (get_exhaustive_data)
-                const cat = item.category || 'Other';
-                allocData[cat] = (allocData[cat] || 0) + marketVal;
 
                 totalVal += marketVal; 
-                totalGL += gl;
+                const cat = item.category || 'Other';
+                allocData[cat] = (allocData[cat] || 0) + marketVal;
 
                 if (!groups.has(item.ticker)) {
                     groups.set(item.ticker, { ticker: item.ticker, totalShares: 0, totalCost: 0, totalGL: 0, lots: [] });
@@ -133,46 +131,38 @@
                 g.lots.push({ ...item, marketVal, gl });
             });
 
+            // --- 4% RULE CALCULATIONS ---
+            const annualSWR = totalVal * 0.04;
+            const monthlySWR = annualSWR / 12;
+            const targetMonthlyIncome = 6000; // Your hypothetical goal for age 62
+            const coverage = ((monthlySWR / targetMonthlyIncome) * 100).toFixed(1);
+
+            document.getElementById('totalVal').innerText = `$${totalVal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('passiveInc').innerText = `$${annualSWR.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('monthlyInc').innerText = `$${monthlySWR.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('goalPct').innerText = `${coverage}%`;
+
             updateChart(allocData);
             renderTable(groups);
-
-            document.getElementById('totalVal').innerText = `$${totalVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('passiveInc').innerText = `$${(totalVal * 0.04).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('lotCount').innerText = rawPortfolioData.length;
-            status.innerText = "✅ Updated.";
+            status.innerText = "✅ Synchronized with Azure SQL.";
         } catch (e) { 
-            status.innerText = "❌ Error Fetching Data."; 
+            status.innerText = "❌ Connection Error: Backend Offline."; 
             console.error(e);
         }
     }
 
+    // Chart.js initialization
     function updateChart(data) {
         const ctx = document.getElementById('allocationChart').getContext('2d');
         if (myChart) myChart.destroy();
-        
-        // Dynamic palette for various sectors
-        const colors = ['#0078d4', '#107c10', '#ffaa00', '#d13438', '#7fba00', '#002050', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
-
+        const colors = ['#0078d4', '#107c10', '#ffaa00', '#d13438', '#7fba00', '#002050', '#8c564b'];
         myChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: Object.keys(data),
-                datasets: [{
-                    data: Object.values(data),
-                    backgroundColor: colors,
-                    borderWidth: 1
-                }]
+                datasets: [{ data: Object.values(data), backgroundColor: colors, borderWidth: 1 }]
             },
-            options: { 
-                cutout: '70%', 
-                maintainAspectRatio: false,
-                plugins: { 
-                    legend: { 
-                        position: 'bottom', 
-                        labels: { boxWidth: 10, font: { size: 10 } } 
-                    } 
-                } 
-            }
+            options: { cutout: '70%', maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
         });
     }
 
@@ -208,7 +198,7 @@
         el.querySelector('.expand-icon').innerText = el.classList.contains('expanded') ? '▼' : '▶';
     }
 
-    // CRUD and Bulk functions (Export/Import) remain as previously provided
+    // CRUD/CSV functions remain identical to previous working versions
     async function saveStock() {
         const ticker = document.getElementById('tickerInput').value.toUpperCase();
         const shares = document.getElementById('sharesInput').value;
@@ -216,11 +206,7 @@
         const date = document.getElementById('dateInput').value;
         if(!ticker || !shares) return;
         const method = isEditMode ? 'PUT' : 'POST';
-        await fetch(API_URL, {
-            method: method,
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ticker, shares: parseFloat(shares), purchase_price: parseFloat(price), purchase_date: date })
-        });
+        await fetch(API_URL, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ticker, shares: parseFloat(shares), purchase_price: parseFloat(price), purchase_date: date }) });
         resetForm(); fetchPortfolio();
     }
 
@@ -238,12 +224,8 @@
     }
 
     async function deleteAsset(ticker, date) {
-        if(!confirm(`Delete ${ticker} from ${date}?`)) return;
-        await fetch(API_URL, {
-            method: 'DELETE',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ticker, purchase_date: date })
-        });
+        if(!confirm(`Delete lot for ${ticker} from ${date}?`)) return;
+        await fetch(API_URL, { method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ticker, purchase_date: date }) });
         fetchPortfolio();
     }
 
@@ -251,7 +233,7 @@
         let rows = ["Ticker,Shares,Price,Date"];
         rawPortfolioData.forEach(i => rows.push(`${i.ticker},${i.shares},${i.price_bought},${i.date_added}`));
         const b = new Blob([rows.join("\n")], {type: 'text/csv'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = "Portfolio.csv"; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = "Portfolio_Export.csv"; a.click();
     }
 
     async function importCSV(input) {
@@ -279,7 +261,8 @@
         document.getElementById('inputForm').classList.remove('edit-mode');
     }
 
-    fetchPortfolio();
+    // TRIGGER INITIAL FETCH ON LOAD
+    window.onload = fetchPortfolio;
 </script>
 </body>
 </html>
