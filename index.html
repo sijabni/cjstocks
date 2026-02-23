@@ -12,6 +12,17 @@
     <div class="left-content">
         <h2>📊 Portfolio & Retirement Dashboard</h2>
         
+        <div class="barbell-container">
+            <div class="barbell-label">
+                <span>🛡️ Safe (Cash/Value)</span>
+                <span id="riskRatioText">Calculating Risk Mix...</span>
+                <span>🚀 Aggressive (Growth)</span>
+            </div>
+            <div class="barbell-track">
+                <div id="safeFill" class="barbell-fill-safe" style="width: 50%;"></div>
+            </div>
+        </div> 
+        
         <div class="summary-bar">
             <div class="stat-card"><h4>Total Value</h4><p id="totalVal">$0.00</p></div>
             <div class="stat-card"><h4>Monthly (4%)</h4><p id="monthlyInc" class="income-text">$0.00</p></div>
