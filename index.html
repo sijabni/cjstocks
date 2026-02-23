@@ -222,11 +222,15 @@
             g.lots.sort((a, b) => new Date(a.date_added) - new Date(b.date_added)).forEach(lot => {
                 const lRow = document.createElement('tr');
                 lRow.className = `lot-row lot-${ticker}`;
-                lRow.innerHTML = `<td>📅 ${lot.date_added}</td><td>${lot.shares}</td><td>$${parseFloat(lot.price_bought).toFixed(2)}</td><td>$${lot.marketVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td class="${lot.gl>=0?'gain':'loss'}">$${lot.gl.toLocaleString()}</td>
-                    <td>
-                        <button class="btn-edit" onclick="event.stopPropagation(); prepareEdit('${lot.ticker}', ${lot.shares}, ${lot.price_bought}, '${lot.date_added}')">Edit</button>
-                        <button class="btn-delete" onclick="event.stopPropagation(); deleteAsset('${lot.ticker}', '${lot.date_added}')">Delete</button>
-                    </td>`;
+                lRow.innerHTML = `<td>📅 ${lot.date_added}</td>
+                    <td>${lot.shares}</td>
+                    <td>$${parseFloat(lot.price_bought).toFixed(2)}</td>
+                    <td>$${lot.marketVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td class="${lot.gl>=0?'gain':'loss'}">$${lot.gl.toLocaleString()}</td>
+                        <td></td> <td>
+                            <button class="btn-edit" onclick="event.stopPropagation(); prepareEdit('${lot.ticker}', ${lot.shares}, ${lot.price_bought}, '${lot.date_added}')">Edit</button>
+                            <button class="btn-delete" onclick="event.stopPropagation(); deleteAsset('${lot.ticker}', '${lot.date_added}')">Delete</button>
+                        </td>`;
                 tableBody.appendChild(lRow);
             });
         });
