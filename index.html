@@ -55,6 +55,14 @@
                     <th>Gain/Loss</th>
                     <th>Actions</th>
                 </tr>
+                <tr>
+                    <th>Ticker / Date</th>
+                    <th>Shares</th>
+                    <th>Price/Cost</th>
+                    <th>Current Value</th>
+                    <th>Trend (7d)</th> <th>Gain/Loss</th>
+                    <th>Actions</th>
+                </tr>
             </thead>
             <tbody id="tableBody"></tbody>
         </table>
@@ -159,7 +167,32 @@
             console.error(e);
         }
     }
-
+    function drawSparkline(canvasId, data) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || data.length < 2) return;
+        
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        // Determine color: Green if trending up, Red if down
+        ctx.strokeStyle = data[data.length - 1] >= data[0] ? '#107c10' : '#d13438';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        const min = Math.min(...data);
+        const max = Math.max(...data);
+        const range = max - min || 1;
+        
+        data.forEach((val, i) => {
+            const x = (i / (data.length - 1)) * width;
+            const y = height - ((val - min) / range) * height;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        
+        ctx.stroke();
+    }
     function updateChart(data) {
         const ctx = document.getElementById('allocationChart').getContext('2d');
         if (myChart) myChart.destroy();
@@ -184,7 +217,13 @@
             const hRow = document.createElement('tr');
             hRow.className = 'group-header';
             hRow.onclick = () => toggle(ticker, hRow);
-            hRow.innerHTML = `<td><span class="expand-icon">▶</span> ${ticker}</td><td>${g.totalShares}</td><td>$${avg.toFixed(2)}</td><td>$${mVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td class="${g.totalGL>=0?'gain':'loss'}">$${g.totalGL.toLocaleString()}</td><td>Summary</td>`;
+            hRow.innerHTML = `<td><span class="expand-icon">▶</span> ${ticker}</td>
+                                <td>${g.totalShares}</td>
+                                <td>$${avg.toFixed(2)}</td>
+                                <td>$${mVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td class="${g.totalGL>=0?'gain':'loss'}">$${g.totalGL.toLocaleString()}</td>
+                                <td><canvas id="spark-${ticker}" width="60" height="20"></canvas></td>
+                                <td>Summary</td>`;
             tableBody.appendChild(hRow);
 
             g.lots.sort((a, b) => new Date(a.date_added) - new Date(b.date_added)).forEach(lot => {
@@ -197,6 +236,9 @@
                     </td>`;
                 tableBody.appendChild(lRow);
             });
+        });
+        groups.forEach((g, ticker) => {
+        drawSparkline(`spark-${ticker}`, g.trend_data);
         });
     }
 
