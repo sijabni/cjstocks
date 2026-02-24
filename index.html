@@ -12,6 +12,11 @@
     <div class="left-content">
         <h2>📊 Portfolio & Retirement Dashboard</h2>
         
+        <div class="upload-section">
+            <input type="file" id="csvFile" accept=".csv">
+            <button onclick="uploadCSV()">Sync Fidelity CSV</button>
+        </div>
+
         <div class="barbell-container">
             <div class="barbell-label">
                 <span>🛡️ Safe (Cash/Value)</span>
@@ -290,6 +295,26 @@
             fetchPortfolio();
         };
         reader.readAsText(input.files[0]);
+    }
+
+    async function uploadCSV() {
+        const fileInput = document.getElementById('csvFile');
+        if (!fileInput.files[0]) return alert("Select a file first!");
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        const response = await fetch(`${API_URL}?action=upload`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            alert("Portfolio Synced!");
+            fetchPortfolio(); // Refresh the table
+        } else {
+            alert("Upload failed.");
+        }
     }
 
     function resetForm() {
