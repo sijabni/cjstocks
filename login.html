@@ -26,6 +26,9 @@
 
             const response = await fetch('https://cjstocks-gpgmhnf0eba9c8c8.canadacentral-01.azurewebsites.net/api/login', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json' // Add this so the backend knows it is receiving JSON
+                },
                 body: JSON.stringify({ username: user, password: pass })
             });
 
