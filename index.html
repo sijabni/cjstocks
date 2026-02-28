@@ -78,10 +78,15 @@
 <script>
     // FULL SCRIPT RESTORED
     const API_URL = 'https://cjstocks1-arhsepcub2fufpez.canadacentral-01.azurewebsites.net/api/get_portfolio';
+    const token = localStorage.getItem('token');
     let isEditMode = false;
     let rawPortfolioData = [];
     let myChart = null;
     
+    // 2. THE GATEKEEPER (Run immediately)
+    if (!token && !window.location.href.includes('login.html')) {
+        window.location.href = 'login.html'; 
+    }
 
     async function fetchPortfolio() {
         const status = document.getElementById('status');
@@ -89,7 +94,18 @@
         status.innerText = "🛰️ Synchronizing Market Data...";
         
         try {
-            const response = await fetch(API_URL);
+            const response = await fetch(API_URL, {
+                headers: {
+                    'Authorization': `Bearer ${token}` // Use the token here
+                }
+            });
+
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                window.location.href = 'login.html';
+                return;
+            }
+
             rawPortfolioData = await response.json();
             
             const groups = new Map();
@@ -162,6 +178,36 @@
             console.error(e);
         }
     }
+    
+    async function saveStock() {
+        // ... gather your inputs ...
+        const ticker = document.getElementById('tickerInput').value.toUpperCase();
+        const shares = document.getElementById('sharesInput').value;
+        const price = document.getElementById('priceInput').value;
+        const date = document.getElementById('dateInput').value;
+        
+        const method = isEditMode ? 'PUT' : 'POST';
+
+        await fetch(API_URL, { 
+            method, 
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` // Use the token here too
+            }, 
+            body: JSON.stringify({ 
+                ticker, 
+                shares: parseFloat(shares), 
+                purchase_price: parseFloat(price), 
+                purchase_date: date 
+            }) 
+        });
+        resetForm(); 
+        fetchPortfolio();
+    }
+
+    // ... [The rest of your helper functions: toggle, drawSparkline, updateChart, etc.] ...
+   
+    
     function drawSparkline(canvasId, data) {
         const canvas = document.getElementById(canvasId);
         if (!canvas || data.length < 2) return;
@@ -245,17 +291,6 @@
         el.classList.toggle('expanded');
         document.querySelectorAll(`.lot-${t}`).forEach(l => l.classList.toggle('show'));
         el.querySelector('.expand-icon').innerText = el.classList.contains('expanded') ? '▼' : '▶';
-    }
-
-    async function saveStock() {
-        const ticker = document.getElementById('tickerInput').value.toUpperCase();
-        const shares = document.getElementById('sharesInput').value;
-        const price = document.getElementById('priceInput').value;
-        const date = document.getElementById('dateInput').value;
-        if(!ticker || !shares) return;
-        const method = isEditMode ? 'PUT' : 'POST';
-        await fetch(API_URL, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ticker, shares: parseFloat(shares), purchase_price: parseFloat(price), purchase_date: date }) });
-        resetForm(); fetchPortfolio();
     }
 
     function prepareEdit(t, s, p, d) {
