@@ -1,6 +1,17 @@
 /* --- ORIGINAL STYLES --- */
-body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #1a1a1a; margin: 0; }
-
+/* - body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #1a1a1a; margin: 0; } */
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center; /* Centers horizontally */
+    align-items: center;     /* Centers vertically */
+    min-height: 100vh;       /* Makes the body at least the height of the screen */
+    width: 100vw;
+    background-color: #f4f7f9; /* A professional soft gray background */
+    overflow: auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
 .master-layout { 
     display: grid; 
     grid-template-columns: 1fr 350px; 
@@ -94,4 +105,99 @@ th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
     background: #107c10; /* Safe Green */
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
     border-right: 2px solid white;
+}
+.header-container {
+    display: flex;
+    justify-content: space-between; /* Pushes items to opposite ends */
+    align-items: center;           /* Vertically centers the text and button */
+    padding: 10px 20px;
+    background-color: #f8f9fa;     /* Light gray background */
+    border-bottom: 1px solid #ddd;
+}
+
+.logout-btn {
+    padding: 6px 12px;
+    background-color: #f44336;     /* Red color for logout */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.logout-btn:hover {
+    background-color: #d32f2f;     /* Darker red on hover */
+}
+
+.auth-page-body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f4f7f9;
+}
+
+.dashboard-page-body {
+    margin: 0;
+    padding: 20px;
+    display: block; /* Normal flow, NOT centered flex */
+    width: 100%;
+    background-color: white;
+}
+
+.auth-card {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    width: 350px; /* Fixed width prevents it from stretching or shrinking */
+    z-index: 10;
+}
+.auth-card.compact {
+    width: 320px;
+    padding: 25px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.auth-card h2 { 
+    margin: 0 0 15px 0; 
+    font-size: 1.2rem; 
+    color: #333; 
+}
+
+.input-group {
+    margin-bottom: 10px;
+}
+
+.auth-card input {
+    width: 100%;
+    padding: 8px 10px; /* Reduced padding for a shorter height */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box; 
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 10px;
+    background-color: #0078d4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+.toggle-container {
+    margin-top: 15px;
+    font-size: 12px;
+}
+
+#toggleLink {
+    color: #0078d4;
+    text-decoration: none;
 }
