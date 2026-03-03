@@ -115,7 +115,7 @@
             const originalText = submitBtn.innerText;
             submitBtn.disabled = true;
             submitBtn.innerHTML = `<span class="spinner"></span> Processing...`;
-            errorDisplay.innerText = ""; // Clear old errors
+            //errorDisplay.innerText = ""; // Clear old errors
 
             const endpoint = isLoginMode ? '/api/login' : '/api/register';
             try {
