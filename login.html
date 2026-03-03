@@ -131,7 +131,7 @@
                 return;
             }
             errorDisplay.innerText = "Processing...";
-            
+
             if (!user || !pass) {
                 setError("Please enter both username and password.");
                  return;
@@ -157,15 +157,15 @@
                         localStorage.setItem('token', data.token); // Save the token
                         window.location.href = 'index.html'; // Go to dashboard
                     } else {
-                        alert("Account created successfully! Please log in.");
+                        setError("Account created successfully! Please log in.");
                         toggleMode(); // Switch to login mode after successful registration
                     }
                 } else {
                     const errorText = await response.text();
-                    err.innerText = "Invalid username or password";
+                    setError("Invalid username or password");
                 }
             } catch (err) {
-                err.innerText = "Connection error. Is the Azure Function running?";
+                setError("Connection error. Is the Azure Function running?")    ;
             } finally {
                 // --- END LOADING STATE ---
                 submitBtn.disabled = false;
