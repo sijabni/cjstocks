@@ -75,8 +75,27 @@
 
     let isLoginMode = true;
 
+        function getErrorDisplay() {
+            return document.getElementById('errMsg');
+        }
+        
+        function clearError() {
+            getErrorDisplay().innerText = "";
+        }
+        
+        function setError(msg) {
+            getErrorDisplay().innerText = msg;
+        }
+
         function toggleMode() {
             isLoginMode = !isLoginMode;
+            const errorDisplay = getErrorDisplay(); // Grab it here
+        
+            if (errorDisplay) {
+                errorDisplay.innerText = "";
+                errorDisplay.style.color = 'red'; 
+            }
+
             // Clear any previous error messages when switching modes
             document.getElementById('errMsg').innerText = "";
             
@@ -105,9 +124,16 @@
             const pass = document.getElementById('password').value;
             const err = document.getElementById('errMsg');
             const submitBtn = document.getElementById('submitBtn');
+            const errorDisplay = getErrorDisplay();
 
+            if (!errorDisplay) {
+                console.error("QA Alert: Element 'errMsg' missing from HTML!");
+                return;
+            }
+            errorDisplay.innerText = "Processing...";
+            
             if (!user || !pass) {
-                err.innerText = "Please enter both username and password.";
+                setError("Please enter both username and password.");
                  return;
             }
 
